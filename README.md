@@ -24,9 +24,11 @@ room, the layout gets a setting; a game does not rebuild a screen.
   - `browser`: choosing a file inside the game (full screen, gamepad),
     for where dragging a file onto the window does not work.
   - `menu`: a game's main menu, a column of entries in a box the port
-    places (Sammy: its title's box).
+    places (Sammy: its title's box; Quagmire: under its title's rail,
+    the rows lower to fit).
   - `levels`: the level selection, the same in every port: the levels
-    with number, name and a tick when done; the chosen one's start view
+    with number, name and a tick when done (other entries, a story
+    sequence, with a play mark, maybe locked); the chosen one's start view
     and the port's lines about it (best, first, latest run).
   - `keys`: the keys page: the actions with their key and pad button,
     Defaults, Back; the port takes the new key and swaps one in use.

@@ -106,6 +106,8 @@ pub enum Mark {
     MoreDown,
     /// A folder in the file browser
     Folder,
+    /// Something to watch (a story sequence in the level selection)
+    Play,
 }
 
 /// How a game draws the shared screens. The screens call these with

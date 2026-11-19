@@ -1,8 +1,9 @@
 //! The level selection (the ports' rule 3): the same layout in every
 //! port. Left a list of the levels - number, name, a tick for the ones
 //! done; entries that are not levels (a story sequence) have no number
-//! and may be locked. Right the chosen level's start view and what the
-//! port says about it (best, first and latest run, deaths).
+//! (a play mark instead) and may be locked. Right the chosen level's
+//! start view and what the port says about it (best, first and latest
+//! run, deaths).
 //!
 //! The port gives the rows, draws the preview into the rectangle it is
 //! given and supplies the lines under it; Return gives the row back.
@@ -165,11 +166,17 @@ impl Levels {
                 let text = n.to_string();
                 let w = theme.width(Role::Row, &text);
                 texts.push(theme.text(l.rows.left as f32 + 6.0 + number_room - w, base, Role::Row, ink, &text));
+            } else {
+                // not a level: a play mark where the number goes
+                theme.mark(surface, (l.rows.left as f32 + 6.0 + number_room - 7.0) as i32, top + 4, Mark::Play, ink);
             }
             if row.done {
                 theme.mark(surface, (name_x - 16.0) as i32, top + 4, Mark::Tick, if chosen { Ink::Chosen } else { Ink::Accent });
             }
-            texts.push(theme.text(name_x, base, Role::Row, ink, &fit(theme, Role::Row, &row.name, room)));
+            // a name too long for the row in the smaller size, cut only
+            // when even that does not fit
+            let role = if theme.width(Role::Row, &row.name) > room { Role::Small } else { Role::Row };
+            texts.push(theme.text(name_x, base, role, ink, &fit(theme, role, &row.name, room)));
         }
         if self.first > 0 {
             theme.mark(surface, l.list.right - 16, l.list.top + 2, Mark::MoreUp, Ink::Dim);

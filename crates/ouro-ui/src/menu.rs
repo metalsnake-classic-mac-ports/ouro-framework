@@ -39,13 +39,27 @@ pub struct Menu {
     pub selected: usize,
 }
 
+/// The rows' height in `area`: `ROW`, less when the entries would not
+/// fit (Quagmire's title leaves little room under its rail), at least 12.
+fn row_height(area: Rect, count: usize, heading: bool) -> i32 {
+    let head = if heading { ROW + 6 } else { 0 };
+    ((area.height() - 2 * PAD - head) / count.max(1) as i32).clamp(12, ROW)
+}
+
 /// The rows' rectangles in `area`, with room for a heading when there
 /// is one: the column centred vertically.
 fn rows(area: Rect, count: usize, heading: bool) -> Vec<Rect> {
     let head = if heading { ROW + 6 } else { 0 };
-    let height = head + count as i32 * ROW;
+    let row = row_height(area, count, heading);
+    let height = head + count as i32 * row;
     let top = area.top + ((area.height() - height) / 2).max(PAD) + head;
-    (0..count as i32).map(|k| Rect::new(area.left + PAD, top + k * ROW, area.right - PAD, top + (k + 1) * ROW)).collect()
+    (0..count as i32).map(|k| Rect::new(area.left + PAD, top + k * row, area.right - PAD, top + (k + 1) * row)).collect()
+}
+
+/// The height of a box for `count` entries at the full row height.
+pub fn height(count: usize, heading: bool) -> i32 {
+    let head = if heading { ROW + 6 } else { 0 };
+    head + count as i32 * ROW + 2 * PAD
 }
 
 impl Menu {
@@ -120,7 +134,9 @@ impl Menu {
             };
             let label = fit(theme, Role::Row, &entry.label, room);
             let w = theme.width(Role::Row, &label);
-            texts.push(theme.text((rect.left + rect.right) as f32 / 2.0 - w / 2.0, (rect.top + BASE) as f32, Role::Row, ink, &label));
+            // the baseline as at the full height (BASE in ROW), less in a lower row
+            let base = rect.top + BASE - (ROW - rect.height()) / 2;
+            texts.push(theme.text((rect.left + rect.right) as f32 / 2.0 - w / 2.0, base as f32, Role::Row, ink, &label));
         }
         texts
     }
@@ -165,5 +181,15 @@ mod tests {
         let (x, base, _, _) = texts.iter().find(|t| t.3 == "Continue").unwrap().clone();
         assert_eq!(m.mouse(x as i32 + 2, base as i32 - 4, true, &e, AREA, true), None);
         assert_eq!(m.selected, 2);
+    }
+
+    /// Entries that would not fit get lower rows, all inside the box.
+    #[test]
+    fn rows_shrink_to_fit() {
+        let area = Rect::new(150, 236, 362, 360);
+        let r = rows(area, 7, false);
+        assert!(r[0].top >= area.top && r[6].bottom <= area.bottom, "{r:?}");
+        assert_eq!(r[0].height(), 14);
+        assert_eq!(rows(AREA, 4, false)[0].height(), ROW);
     }
 }
