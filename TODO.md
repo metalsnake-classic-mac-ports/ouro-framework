@@ -2,7 +2,7 @@
 
 Open work only.
 
-- [ ] S.C.Out and Harry onto `menu`, `levels`, `keys` (rule 3: the same level
+- [ ] S.C.Out and Harry onto `menu`, `levels`, `keys`, `timeline` (rule 3: the same level
       selection in every port)
 - [ ] Gamepad mapping onto `Key` shared by the ports (now each port maps it)
 - [ ] The pack library's screen (rule 8: approved datasets from a server,
