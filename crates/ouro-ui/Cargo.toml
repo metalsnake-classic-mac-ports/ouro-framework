@@ -1,0 +1,9 @@
+[package]
+name = "ouro-ui"
+description = "The screens shared by the Ouro ports: their logic and layout; each game draws them in its own style"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
