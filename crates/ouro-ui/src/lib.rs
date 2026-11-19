@@ -1,6 +1,6 @@
 //! The screens every Ouro port shares (the rules in the ports' CLAUDE.md:
 //! the game library, adding packs, a game's menu, the level selection,
-//! the keys page; later the timeline). This crate holds what they do and where
+//! the keys page, the timeline). This crate holds what they do and where
 //! things go - the state, the keys, the mouse, the layout - and nothing of
 //! how they look: each game draws them through its [`Theme`] (its colours,
 //! font, boxes), so a screen looks like the game it belongs to and works
@@ -15,6 +15,7 @@ pub mod keys;
 pub mod levels;
 pub mod library;
 pub mod menu;
+pub mod timeline;
 
 /// A rectangle in screen pixels: `left..right` x `top..bottom`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -134,6 +135,9 @@ pub trait Theme {
     /// A thin line between parts of a box.
     fn rule(&self, surface: &mut Self::Surface, rect: Rect);
 
+    /// A rectangle in the colour of `ink` (the timeline's lines and dots).
+    fn fill(&self, surface: &mut Self::Surface, rect: Rect, ink: Ink);
+
     /// A small picture, about 9 x 9 pixels, at (x, y).
     fn mark(&self, surface: &mut Self::Surface, x: i32, y: i32, mark: Mark, ink: Ink);
 
@@ -196,6 +200,9 @@ pub(crate) mod test_theme {
         }
         fn rule(&self, s: &mut Record, r: Rect) {
             s.calls.push(format!("rule {r:?}"));
+        }
+        fn fill(&self, s: &mut Record, r: Rect, ink: Ink) {
+            s.calls.push(format!("fill {r:?} {ink:?}"));
         }
         fn mark(&self, s: &mut Record, x: i32, y: i32, m: Mark, _ink: Ink) {
             s.calls.push(format!("mark {x} {y} {m:?}"));

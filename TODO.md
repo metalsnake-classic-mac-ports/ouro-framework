@@ -2,9 +2,6 @@
 
 Open work only.
 
-- [ ] Continue and the timeline as shared screens (Ouro-Quagmire's
-      `timeline.rs` is the model), drawn through `Theme`; the menu, the level
-      selection and the keys page are there (2026-11-19, used by Sammy first)
 - [ ] S.C.Out and Harry onto `menu`, `levels`, `keys` (rule 3: the same level
       selection in every port)
 - [ ] Gamepad mapping onto `Key` shared by the ports (now each port maps it)
