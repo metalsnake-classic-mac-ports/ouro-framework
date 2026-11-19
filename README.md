@@ -3,8 +3,8 @@
 What the [Ouro ports](https://github.com/metalsnake-classic-mac-ports)
 (Ouro-Quagmire, Ouro-S.C.Out, Ouro-Harry-the-Handsome-Executive) share
 at run time: the screens every port has by the ports' rules (the game
-library, adding packs; later the keys page, the level selection, Continue
-and the timeline).
+library, adding packs, a game's menu, the level selection, the keys
+page; later Continue and the timeline).
 
 The split (decided 2026-11-19): the framework holds what a screen does
 and where things go - state, keys, mouse, layout. How it looks is the
@@ -23,6 +23,13 @@ room, the layout gets a setting; a game does not rebuild a screen.
     "Add from a file..." and "Get packs online...".
   - `browser`: choosing a file inside the game (full screen, gamepad),
     for where dragging a file onto the window does not work.
+  - `menu`: a game's main menu, a column of entries in a box the port
+    places (Sammy: its title's box).
+  - `levels`: the level selection, the same in every port: the levels
+    with number, name and a tick when done; the chosen one's start view
+    and the port's lines about it (best, first, latest run).
+  - `keys`: the keys page: the actions with their key and pad button,
+    Defaults, Back; the port takes the new key and swaps one in use.
 
 ## Using it
 

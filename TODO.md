@@ -2,9 +2,11 @@
 
 Open work only.
 
-- [ ] The keys page, the level selection, Continue and the timeline as
-      shared screens (Ouro-Quagmire's `menu.rs` and `timeline.rs` are the
-      models), drawn through `Theme`
+- [ ] Continue and the timeline as shared screens (Ouro-Quagmire's
+      `timeline.rs` is the model), drawn through `Theme`; the menu, the level
+      selection and the keys page are there (2026-11-19, used by Sammy first)
+- [ ] S.C.Out and Harry onto `menu`, `levels`, `keys` (rule 3: the same level
+      selection in every port)
 - [ ] Gamepad mapping onto `Key` shared by the ports (now each port maps it)
 - [ ] The pack library's screen (rule 8: approved datasets from a server,
       filtered by game; its config file's fields) once the server exists
