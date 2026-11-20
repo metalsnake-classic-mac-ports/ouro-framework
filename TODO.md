@@ -2,6 +2,11 @@
 
 Open work only.
 
+- [ ] Releases of the ports: their `Cargo.toml` take ouro-ui / ouro-play by path
+      (`../ouro-framework`), which only a checkout next to them has; the Homebrew formulas
+      build from the port's tarball alone (`cargo install --locked`). Needs this repository
+      on GitHub and the ports on a git dependency (a tag or rev) in the released state, with
+      a way to work on both locally (decided how: open)
 - [ ] Quagmire's records and timeline onto `ouro-play` (it keeps its own `records.rs` and
       `timeline.rs`, which came first; S.C.Out and Harry use `ouro-play`)
 - [ ] Gamepad mapping onto `Key` shared by the ports (now each port maps it)
