@@ -4,7 +4,7 @@ What the [Ouro ports](https://github.com/metalsnake-classic-mac-ports)
 (Ouro-Quagmire, Ouro-S.C.Out, Ouro-Harry-the-Handsome-Executive) share
 at run time: the screens every port has by the ports' rules (the game
 library, adding packs, a game's menu, the level selection, the keys
-page, the timeline).
+page, the options page, the timeline).
 
 The split (decided 2026-11-19): the framework holds what a screen does
 and where things go - state, keys, mouse, layout. How it looks is the
@@ -30,6 +30,9 @@ room, the layout gets a setting; a game does not rebuild a screen.
     with number, name and a tick when done (other entries, a story
     sequence, with a play mark, maybe locked); the chosen one's start view
     and the port's lines about it (best, first, latest run).
+  - `options`: the options page: the game's settings with their values
+    (Left / Right change one), rows the port adds (the keys page,
+    Defaults), Back; the port applies and saves a change at once.
   - `keys`: the keys page: the actions with their key and pad button,
     Defaults, Back; the port takes the new key and swaps one in use.
   - `timeline`: rewind's snapshots as a tree (a lane per branch), the

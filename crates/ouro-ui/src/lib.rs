@@ -1,6 +1,6 @@
 //! The screens every Ouro port shares (the rules in the ports' CLAUDE.md:
 //! the game library, adding packs, a game's menu, the level selection,
-//! the keys page, the timeline). This crate holds what they do and where
+//! the options page, the keys page, the timeline). This crate holds what they do and where
 //! things go - the state, the keys, the mouse, the layout - and nothing of
 //! how they look: each game draws them through its [`Theme`] (its colours,
 //! font, boxes), so a screen looks like the game it belongs to and works
@@ -15,6 +15,7 @@ pub mod keys;
 pub mod levels;
 pub mod library;
 pub mod menu;
+pub mod options;
 pub mod timeline;
 
 /// A rectangle in screen pixels: `left..right` x `top..bottom`.
