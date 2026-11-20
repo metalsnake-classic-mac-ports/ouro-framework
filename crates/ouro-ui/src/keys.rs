@@ -111,7 +111,10 @@ impl Keys {
         let pad_x = key_x + key_w + 24.0;
         let head = (p.top - 6) as f32;
         texts.push(theme.text(key_x, head, Role::Small, Ink::Dim, "Key"));
-        texts.push(theme.text(pad_x, head, Role::Small, Ink::Dim, "Gamepad"));
+        // a game without gamepad bindings (yet) shows no column for them
+        if bindings.iter().any(|b| !b.pad.is_empty()) {
+            texts.push(theme.text(pad_x, head, Role::Small, Ink::Dim, "Gamepad"));
+        }
         for k in 0..rows {
             let r = row_rect(p, k);
             let chosen = k == self.selected;
