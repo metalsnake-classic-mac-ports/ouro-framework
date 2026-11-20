@@ -60,3 +60,8 @@ The ports find this repository next to theirs:
     ouro-play = { path = "../ouro-framework/crates/ouro-play" }
 
     cargo test
+
+## Licence
+
+GNU General Public License, version 3 or later ([LICENSE](LICENSE)), like
+the ports.
