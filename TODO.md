@@ -2,8 +2,8 @@
 
 Open work only.
 
-- [ ] S.C.Out and Harry onto `menu`, `levels`, `keys`, `timeline` (rule 3: the same level
-      selection in every port)
+- [ ] Quagmire's records and timeline onto `ouro-play` (it keeps its own `records.rs` and
+      `timeline.rs`, which came first; S.C.Out and Harry use `ouro-play`)
 - [ ] Gamepad mapping onto `Key` shared by the ports (now each port maps it)
 - [ ] The pack library's screen (rule 8: approved datasets from a server,
       filtered by game; its config file's fields) once the server exists
