@@ -2,26 +2,29 @@
 //! game's state; each knows the one before it, so playing on from an
 //! earlier one makes a fork and the snapshots form a tree, which ouro-ui's
 //! timeline shows. A snapshot keeps the port's state (anything it can
-//! clone, and serialise to keep it on disk), a picture (PNG) and the line
-//! the timeline shows about it.
+//! serialise) as deflated JSON - a game's state is mostly zeros and
+//! repeats, Harry's 367 KB of JSON become a few dozen - a picture (PNG)
+//! and the line the timeline shows about it.
 //!
 //! Memory: at most `max` snapshots keep their state and picture; the
 //! oldest are dropped first and stay as links of the tree.
 //!
 //! On disk (with Continue's state): a snapshot never changes once taken,
 //! so saving writes only what is new - `n<k>.json` (parent, frame, time,
-//! line, state), `p<k>.png` - and then `index.json` (how many, the current
-//! one, the next snapshot's frame). A snapshot dropped since is written
-//! again without its state, and its picture removed.
+//! line, whether it is dropped), `s<k>.z` (the state), `p<k>.png` - and
+//! then `index.json` (how many, the current one, the next snapshot's
+//! frame). A snapshot dropped since is written again as dropped, and its
+//! state and picture removed.
 
+use std::marker::PhantomData;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Snapshot<T> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Snapshot {
     pub parent: Option<usize>,
     /// The game's frame it was taken at
     pub frame: u64,
@@ -29,15 +32,16 @@ pub struct Snapshot<T> {
     pub taken: u64,
     /// The port's line about it (level, time played, deaths)
     pub info: String,
-    /// The state; `None` when dropped (then a link of the tree only)
-    pub state: Option<T>,
+    /// The state as deflated JSON; `None` when dropped (then a link of
+    /// the tree only)
+    pub state: Option<Vec<u8>>,
     /// The picture as PNG; empty when dropped
     pub picture: Vec<u8>,
 }
 
 #[derive(Debug)]
 pub struct Rewind<T> {
-    nodes: Vec<Snapshot<T>>,
+    nodes: Vec<Snapshot>,
     current: Option<usize>,
     /// Frames between two snapshots
     every: u64,
@@ -47,6 +51,7 @@ pub struct Rewind<T> {
     /// Snapshots on disk; ones dropped since they were written
     written: usize,
     dropped: Vec<usize>,
+    state: PhantomData<T>,
 }
 
 /// `index.json`
@@ -59,22 +64,32 @@ struct Index {
 
 /// `n<k>.json`
 #[derive(Serialize, Deserialize)]
-struct Stored<T> {
+struct Stored {
     parent: Option<usize>,
     frame: u64,
     taken: u64,
     info: String,
-    state: Option<T>,
+    dropped: bool,
+}
+
+/// `state` as deflated JSON.
+fn pack<T: Serialize>(state: &T) -> Vec<u8> {
+    miniz_oxide::deflate::compress_to_vec(&serde_json::to_vec(state).expect("a state as JSON"), 6)
+}
+
+fn unpack<T: DeserializeOwned>(packed: &[u8]) -> Option<T> {
+    let json = miniz_oxide::inflate::decompress_to_vec(packed).ok()?;
+    serde_json::from_slice(&json).map_err(|e| eprintln!("a snapshot: {e}")).ok()
 }
 
 pub fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
-impl<T: Clone> Rewind<T> {
+impl<T: Serialize + DeserializeOwned> Rewind<T> {
     /// A snapshot every `every` frames, at most `max` kept whole.
     pub fn new(every: u64, max: usize) -> Rewind<T> {
-        Rewind { nodes: Vec::new(), current: None, every, max: max.max(1), next_at: 0, written: 0, dropped: Vec::new() }
+        Rewind { nodes: Vec::new(), current: None, every, max: max.max(1), next_at: 0, written: 0, dropped: Vec::new(), state: PhantomData }
     }
 
     /// No snapshots (a new game); the first is due at once.
@@ -92,8 +107,8 @@ impl<T: Clone> Rewind<T> {
     }
 
     /// Keep a snapshot taken at `frame`; it follows the current one.
-    pub fn take(&mut self, frame: u64, state: T, picture: Vec<u8>, info: String) {
-        self.nodes.push(Snapshot { parent: self.current, frame, taken: now(), info, state: Some(state), picture });
+    pub fn take(&mut self, frame: u64, state: &T, picture: Vec<u8>, info: String) {
+        self.nodes.push(Snapshot { parent: self.current, frame, taken: now(), info, state: Some(pack(state)), picture });
         self.current = Some(self.nodes.len() - 1);
         self.next_at = frame + self.every;
         self.trim();
@@ -116,7 +131,7 @@ impl<T: Clone> Rewind<T> {
     /// snapshot follows it, `every` frames after it.
     pub fn restore(&mut self, k: usize) -> Option<T> {
         let n = self.nodes.get(k)?;
-        let state = n.state.clone()?;
+        let state = unpack(n.state.as_deref()?)?;
         self.next_at = n.frame + self.every;
         self.current = Some(k);
         Some(state)
@@ -131,7 +146,7 @@ impl<T: Clone> Rewind<T> {
         self.current
     }
 
-    pub fn get(&self, k: usize) -> Option<&Snapshot<T>> {
+    pub fn get(&self, k: usize) -> Option<&Snapshot> {
         self.nodes.get(k)
     }
 
@@ -147,9 +162,7 @@ impl<T: Clone> Rewind<T> {
     pub fn info(&self, k: usize) -> String {
         self.nodes.get(k).map_or_else(String::new, |n| format!("{}   {}", n.info, local_time(n.taken)))
     }
-}
 
-impl<T: Clone + Serialize + DeserializeOwned> Rewind<T> {
     /// Write what is new since the last save into `dir`.
     pub fn save(&mut self, dir: &Path) -> std::io::Result<()> {
         std::fs::create_dir_all(dir)?;
@@ -159,13 +172,18 @@ impl<T: Clone + Serialize + DeserializeOwned> Rewind<T> {
         let dropped = std::mem::take(&mut self.dropped);
         for k in dropped.into_iter().chain(self.written..self.nodes.len()) {
             let n = &self.nodes[k];
-            let stored = Stored { parent: n.parent, frame: n.frame, taken: n.taken, info: n.info.clone(), state: n.state.clone() };
+            let stored = Stored { parent: n.parent, frame: n.frame, taken: n.taken, info: n.info.clone(), dropped: n.state.is_none() };
             crate::write_whole(&dir.join(format!("n{k}.json")), &serde_json::to_vec(&stored).map_err(std::io::Error::other)?)?;
-            let png = dir.join(format!("p{k}.png"));
-            if n.picture.is_empty() {
-                let _ = std::fs::remove_file(png);
-            } else {
-                crate::write_whole(&png, &n.picture)?;
+            let (state, png) = (dir.join(format!("s{k}.z")), dir.join(format!("p{k}.png")));
+            match &n.state {
+                Some(s) => {
+                    crate::write_whole(&state, s)?;
+                    crate::write_whole(&png, &n.picture)?;
+                }
+                None => {
+                    let _ = std::fs::remove_file(state);
+                    let _ = std::fs::remove_file(png);
+                }
             }
         }
         self.written = self.nodes.len();
@@ -179,9 +197,11 @@ impl<T: Clone + Serialize + DeserializeOwned> Rewind<T> {
         let Ok(bytes) = std::fs::read(dir.join("index.json")) else { return Ok(r) };
         let index: Index = serde_json::from_slice(&bytes).map_err(std::io::Error::other)?;
         for k in 0..index.count {
-            let s: Stored<T> = serde_json::from_slice(&std::fs::read(dir.join(format!("n{k}.json")))?).map_err(std::io::Error::other)?;
-            let picture = if s.state.is_some() { std::fs::read(dir.join(format!("p{k}.png"))).unwrap_or_default() } else { Vec::new() };
-            r.nodes.push(Snapshot { parent: s.parent.filter(|&p| p < k), frame: s.frame, taken: s.taken, info: s.info, state: s.state, picture });
+            let s: Stored = serde_json::from_slice(&std::fs::read(dir.join(format!("n{k}.json")))?).map_err(std::io::Error::other)?;
+            // a snapshot whose state is missing is a link only
+            let state = if s.dropped { None } else { std::fs::read(dir.join(format!("s{k}.z"))).ok() };
+            let picture = if state.is_some() { std::fs::read(dir.join(format!("p{k}.png"))).unwrap_or_default() } else { Vec::new() };
+            r.nodes.push(Snapshot { parent: s.parent.filter(|&p| p < k), frame: s.frame, taken: s.taken, info: s.info, state, picture });
         }
         r.current = index.current.filter(|&c| c < r.nodes.len());
         r.next_at = index.next_at;
@@ -266,13 +286,13 @@ mod tests {
         let mut r: Rewind<u32> = Rewind::new(100, 3);
         assert!(r.due(0));
         for f in [0, 100, 200] {
-            r.take(f, f as u32, vec![1], format!("at {f}"));
+            r.take(f, &(f as u32), vec![1], format!("at {f}"));
         }
         assert!(!r.due(250) && r.due(300));
         // back to the second, play on: a fork
         assert_eq!(r.restore(1), Some(100));
         assert!(r.due(200));
-        r.take(200, 999, vec![2], "fork".into());
+        r.take(200, &999, vec![2], "fork".into());
         let tree = r.tree();
         assert_eq!((tree[3].parent, tree[2].parent), (Some(1), Some(1)));
         assert!(tree[0].gone, "the oldest dropped beyond 3");
@@ -285,18 +305,19 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("ouro-play-rewind-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let mut r: Rewind<String> = Rewind::new(10, 2);
-        r.take(0, "a".into(), vec![1, 2], "one".into());
-        r.take(10, "b".into(), vec![3], "two".into());
+        r.take(0, &"a".into(), vec![1, 2], "one".into());
+        r.take(10, &"b".into(), vec![3], "two".into());
         r.save(&dir).unwrap();
-        r.take(20, "c".into(), vec![4], "three".into());
+        r.take(20, &"c".into(), vec![4], "three".into());
         r.save(&dir).unwrap();
-        assert!(!dir.join("p0.png").exists(), "dropped since: its picture removed");
-        let l: Rewind<String> = Rewind::load(&dir, 10, 2).unwrap();
+        assert!(!dir.join("p0.png").exists() && !dir.join("s0.z").exists(), "dropped since: its state and picture removed");
+        let mut l: Rewind<String> = Rewind::load(&dir, 10, 2).unwrap();
         assert_eq!(l.tree(), r.tree());
-        assert_eq!(l.get(2).unwrap().state.as_deref(), Some("c"));
+        assert_eq!(l.restore(2).as_deref(), Some("c"));
         assert_eq!(l.get(1).unwrap().picture, vec![3]);
         assert_eq!(l.current(), Some(2));
         assert!(l.due(30) && !l.due(29));
+        assert_eq!(l.restore(0), None, "dropped");
         std::fs::remove_dir_all(&dir).unwrap();
         assert_eq!(civil(0), (1970, 1, 1));
         assert_eq!(civil(20_412), (2025, 11, 20));

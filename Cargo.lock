@@ -85,6 +85,7 @@ dependencies = [
 name = "ouro-play"
 version = "0.1.0"
 dependencies = [
+ "miniz_oxide 0.8.9",
  "ouro-ui",
  "png",
  "serde",
