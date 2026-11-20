@@ -48,6 +48,9 @@ room, the layout gets a setting; a game does not rebuild a screen.
   - `saved`: Continue's state in a file that names its format;
   - `picture`: RGB pictures as PNG, halved for the snapshots.
 
+Releasing a port that uses it (the Homebrew formula brings the framework
+as a resource): [RELEASING.md](RELEASING.md).
+
 ## Using it
 
 The ports find this repository next to theirs:
