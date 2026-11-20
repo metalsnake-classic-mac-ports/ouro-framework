@@ -17,6 +17,9 @@ use crate::{Ink, Key, Rect, Role, Theme, fit};
 pub struct Node {
     pub parent: Option<usize>,
     pub gone: bool,
+    /// A save the player made (the ports' rule 6: at a game's fixed save
+    /// points, as Harry's copiers): drawn larger
+    pub manual: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -225,7 +228,8 @@ impl Timeline {
         }
         for j in 0..nodes.len() {
             let Some((x, y)) = places[j].filter(|_| !nodes[j].gone) else { continue };
-            theme.fill(surface, Rect::new(x - 1, y - 1, x + 2, y + 2), if Some(j) == current { Ink::Normal } else { Ink::Accent });
+            let r = if nodes[j].manual { 2 } else { 1 };
+            theme.fill(surface, Rect::new(x - r, y - r, x + r + 1, y + r + 1), if Some(j) == current { Ink::Normal } else { Ink::Accent });
         }
         if let Some((x, y)) = places[k] {
             for r in [Rect::new(x - 3, y - 3, x + 4, y - 2), Rect::new(x - 3, y + 3, x + 4, y + 4), Rect::new(x - 3, y - 3, x - 2, y + 4), Rect::new(x + 3, y - 3, x + 4, y + 4)] {
@@ -246,7 +250,7 @@ mod tests {
 
     /// Four snapshots, then two from the second: a fork in lane 1.
     fn tree() -> Vec<Node> {
-        let n = |parent| Node { parent, gone: false };
+        let n = |parent| Node { parent, gone: false, manual: false };
         vec![n(None), n(Some(0)), n(Some(1)), n(Some(2)), n(Some(1)), n(Some(4))]
     }
 

@@ -37,6 +37,8 @@ pub struct Snapshot {
     pub state: Option<Vec<u8>>,
     /// The picture as PNG; empty when dropped
     pub picture: Vec<u8>,
+    /// A save the player made (rule 6), not one taken by the clock
+    pub manual: bool,
 }
 
 #[derive(Debug)]
@@ -70,6 +72,8 @@ struct Stored {
     taken: u64,
     info: String,
     dropped: bool,
+    #[serde(default)]
+    manual: bool,
 }
 
 /// `state` as deflated JSON.
@@ -108,7 +112,17 @@ impl<T: Serialize + DeserializeOwned> Rewind<T> {
 
     /// Keep a snapshot taken at `frame`; it follows the current one.
     pub fn take(&mut self, frame: u64, state: &T, picture: Vec<u8>, info: String) {
-        self.nodes.push(Snapshot { parent: self.current, frame, taken: now(), info, state: Some(pack(state)), picture });
+        self.keep(frame, state, picture, info, false);
+    }
+
+    /// Keep a save the player made (rule 6: at a fixed save point); shown
+    /// apart in the timeline, the next snapshot by the clock follows it.
+    pub fn save_point(&mut self, frame: u64, state: &T, picture: Vec<u8>, info: String) {
+        self.keep(frame, state, picture, info, true);
+    }
+
+    fn keep(&mut self, frame: u64, state: &T, picture: Vec<u8>, info: String, manual: bool) {
+        self.nodes.push(Snapshot { parent: self.current, frame, taken: now(), info, state: Some(pack(state)), picture, manual });
         self.current = Some(self.nodes.len() - 1);
         self.next_at = frame + self.every;
         self.trim();
@@ -139,7 +153,7 @@ impl<T: Serialize + DeserializeOwned> Rewind<T> {
 
     /// The tree for ouro-ui's timeline.
     pub fn tree(&self) -> Vec<ouro_ui::timeline::Node> {
-        self.nodes.iter().map(|n| ouro_ui::timeline::Node { parent: n.parent, gone: n.state.is_none() }).collect()
+        self.nodes.iter().map(|n| ouro_ui::timeline::Node { parent: n.parent, gone: n.state.is_none(), manual: n.manual }).collect()
     }
 
     pub fn current(&self) -> Option<usize> {
@@ -172,7 +186,7 @@ impl<T: Serialize + DeserializeOwned> Rewind<T> {
         let dropped = std::mem::take(&mut self.dropped);
         for k in dropped.into_iter().chain(self.written..self.nodes.len()) {
             let n = &self.nodes[k];
-            let stored = Stored { parent: n.parent, frame: n.frame, taken: n.taken, info: n.info.clone(), dropped: n.state.is_none() };
+            let stored = Stored { parent: n.parent, frame: n.frame, taken: n.taken, info: n.info.clone(), dropped: n.state.is_none(), manual: n.manual };
             crate::write_whole(&dir.join(format!("n{k}.json")), &serde_json::to_vec(&stored).map_err(std::io::Error::other)?)?;
             let (state, png) = (dir.join(format!("s{k}.z")), dir.join(format!("p{k}.png")));
             match &n.state {
@@ -201,7 +215,7 @@ impl<T: Serialize + DeserializeOwned> Rewind<T> {
             // a snapshot whose state is missing is a link only
             let state = if s.dropped { None } else { std::fs::read(dir.join(format!("s{k}.z"))).ok() };
             let picture = if state.is_some() { std::fs::read(dir.join(format!("p{k}.png"))).unwrap_or_default() } else { Vec::new() };
-            r.nodes.push(Snapshot { parent: s.parent.filter(|&p| p < k), frame: s.frame, taken: s.taken, info: s.info, state, picture });
+            r.nodes.push(Snapshot { parent: s.parent.filter(|&p| p < k), frame: s.frame, taken: s.taken, info: s.info, state, picture, manual: s.manual });
         }
         r.current = index.current.filter(|&c| c < r.nodes.len());
         r.next_at = index.next_at;
@@ -308,7 +322,7 @@ mod tests {
         r.take(0, &"a".into(), vec![1, 2], "one".into());
         r.take(10, &"b".into(), vec![3], "two".into());
         r.save(&dir).unwrap();
-        r.take(20, &"c".into(), vec![4], "three".into());
+        r.save_point(20, &"c".into(), vec![4], "three".into());
         r.save(&dir).unwrap();
         assert!(!dir.join("p0.png").exists() && !dir.join("s0.z").exists(), "dropped since: its state and picture removed");
         let mut l: Rewind<String> = Rewind::load(&dir, 10, 2).unwrap();
@@ -318,6 +332,7 @@ mod tests {
         assert_eq!(l.current(), Some(2));
         assert!(l.due(30) && !l.due(29));
         assert_eq!(l.restore(0), None, "dropped");
+        assert!(l.tree()[2].manual && !l.tree()[1].manual);
         std::fs::remove_dir_all(&dir).unwrap();
         assert_eq!(civil(0), (1970, 1, 1));
         assert_eq!(civil(20_412), (2025, 11, 20));
