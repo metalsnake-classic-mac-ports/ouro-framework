@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/ouro-ui"]
+members = ["crates/ouro-ui", "crates/ouro-play"]
 
 [workspace.package]
 version = "0.1.0"

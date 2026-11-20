@@ -1,0 +1,13 @@
+[package]
+name = "ouro-play"
+description = "What the Ouro ports keep of play: the level records and rewind's snapshots, with their files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ouro-ui = { path = "../ouro-ui" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+png = "0.18"

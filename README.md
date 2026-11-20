@@ -39,11 +39,21 @@ room, the layout gets a setting; a game does not rebuild a screen.
     chosen one's picture and the port's line about it; the port keeps
     the snapshots and gives their tree.
 
+- `ouro-play`: what the screens show, kept with its files (serde, PNG):
+  - `records`: the level selection's records, first / best / latest
+    done run with its deaths, in a JSON file the port names;
+  - `rewind`: rewind's snapshots as a tree (any state the port can
+    clone and serialise, a PNG and a line each), with ouro-ui's
+    timeline tree, saved and loaded incrementally;
+  - `saved`: Continue's state in a file that names its format;
+  - `picture`: RGB pictures as PNG, halved for the snapshots.
+
 ## Using it
 
 The ports find this repository next to theirs:
 
     [dependencies]
     ouro-ui = { path = "../ouro-framework/crates/ouro-ui" }
+    ouro-play = { path = "../ouro-framework/crates/ouro-play" }
 
     cargo test

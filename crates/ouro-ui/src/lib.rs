@@ -141,8 +141,11 @@ pub trait Theme {
     /// A rectangle in the colour of `ink` (the timeline's lines and dots).
     fn fill(&self, surface: &mut Self::Surface, rect: Rect, ink: Ink);
 
-    /// A small picture, about 9 x 9 pixels, at (x, y).
-    fn mark(&self, surface: &mut Self::Surface, x: i32, y: i32, mark: Mark, ink: Ink);
+    /// A small picture, about 9 x 9 pixels, at (x, y); by default drawn
+    /// with [`Theme::fill`] ([`plain_mark`]).
+    fn mark(&self, surface: &mut Self::Surface, x: i32, y: i32, mark: Mark, ink: Ink) {
+        plain_mark(self, surface, x, y, mark, ink);
+    }
 
     /// A line of text at (x, baseline).
     fn text(&self, x: f32, baseline: f32, role: Role, ink: Ink, text: &str) -> Self::Text;
@@ -151,6 +154,39 @@ pub trait Theme {
     fn button_ink(&self, primary: bool, focused: bool) -> Ink {
         let _ = primary;
         if focused { Ink::Chosen } else { Ink::Normal }
+    }
+}
+
+/// The marks in plain rectangles of `ink`: arrows, a tick, a play
+/// triangle, a folder.
+pub fn plain_mark<T: Theme + ?Sized>(theme: &T, surface: &mut T::Surface, x: i32, y: i32, mark: Mark, ink: Ink) {
+    let mut fill = |left: i32, top: i32, right: i32, bottom: i32| theme.fill(surface, Rect::new(left, top, right, bottom), ink);
+    match mark {
+        Mark::MoreUp | Mark::MoreDown => {
+            for k in 0..5 {
+                let row = if mark == Mark::MoreDown { y + k } else { y + 4 - k };
+                fill(x + k, row, x + 9 - k, row + 1);
+            }
+        }
+        Mark::Tick => {
+            for k in 0..4 {
+                fill(x + k, y + 4 + k, x + k + 2, y + 6 + k);
+            }
+            for k in 0..5 {
+                fill(x + 4 + k, y + 6 - k, x + 6 + k, y + 8 - k);
+            }
+        }
+        Mark::Play => {
+            // a triangle pointing right, 7 x 9
+            for k in 0..5 {
+                fill(x, y + k, x + 2 + k * 3 / 2, y + 1 + k);
+                fill(x, y + 8 - k, x + 2 + k * 3 / 2, y + 9 - k);
+            }
+        }
+        Mark::Folder => {
+            fill(x, y + 2, x + 11, y + 10);
+            fill(x, y, x + 5, y + 2);
+        }
     }
 }
 
